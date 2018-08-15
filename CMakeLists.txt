@@ -61,6 +61,7 @@ set(SOURCES
         src/core/gsthread.cpp
         src/core/gsregisters.cpp
         src/core/gscontext.cpp
+        src/core/gsslave.cpp
 	src/core/serialize.cpp
 	src/core/sif.cpp
 	src/qt/emuthread.cpp
@@ -114,6 +115,7 @@ set(HEADERS
         src/core/gsthread.hpp
         src/core/gsregisters.hpp
         src/core/circularFIFO.hpp
+        src/core/gsslave.hpp
 	src/core/gscontext.hpp
 	src/core/int128.hpp
 	src/core/sif.hpp

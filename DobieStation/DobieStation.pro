@@ -26,6 +26,7 @@ SOURCES += ../src/qt/main.cpp \
     ../src/core/gs.cpp \
     ../src/core/gsregisters.cpp \
     ../src/core/gsthread.cpp \
+    ../src/core/gsslave.cpp \
     ../src/core/ee/dmac.cpp \
     ../src/qt/emuwindow.cpp \
     ../src/core/gscontext.cpp \
@@ -80,6 +81,7 @@ HEADERS += \
     ../src/core/gs.hpp \
     ../src/core/circularFIFO.hpp \
     ../src/core/gsthread.hpp \
+    ../src/core/gsslave.hpp \
     ../src/core/gsregisters.hpp \
     ../src/core/ee/dmac.hpp \
     ../src/qt/emuwindow.hpp \

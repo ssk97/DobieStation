@@ -3,7 +3,7 @@
 #include <cstdint>
 #include "gscontext.hpp"
 #include "gs.hpp"
-
+#include "gsslave.hpp"
 struct PRMODE
 {
     bool gourand_shading;
@@ -213,6 +213,7 @@ class GraphicsSynthesizerThread
         ~GraphicsSynthesizerThread();
         
         static void event_loop(gs_fifo* fifo, gs_return_fifo* return_fifo);
+        friend GraphicsSynthesizerSlave; //warning: ensure no state changes in GS thread while slaves are processing
 };
 
 inline uint32_t GraphicsSynthesizerThread::get_word(uint32_t addr)
