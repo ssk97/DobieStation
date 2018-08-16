@@ -26,6 +26,14 @@ bool GraphicsSynthesizerSlave::check_complete()
     return (remaining.load(std::memory_order_consume) == 0);
 }
 
+void GraphicsSynthesizerSlave::kill()
+{
+    gs_slave_payload p;
+    p.no_payload = {};
+    send({ slave_die, p });
+    slave_thread.join();
+}
+
 
 void GraphicsSynthesizerSlave::event_loop(GraphicsSynthesizerSlave *s)
 {
@@ -62,7 +70,6 @@ void GraphicsSynthesizerSlave::event_loop(GraphicsSynthesizerSlave *s)
     }
     catch (Emulation_error &e)
     {
-        GS_return_message_payload return_payload;
         char* copied_string = new char[ERROR_STRING_MAX_LENGTH];
         strncpy(copied_string, e.what(), ERROR_STRING_MAX_LENGTH);
         s->error_report = copied_string;

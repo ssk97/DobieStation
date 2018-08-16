@@ -109,6 +109,9 @@ void EmuThread::gsdump_run()
             gsdump.read((char*)&data, sizeof(data));
             switch (data.type)
             {
+                case gssleep_t:
+                    Errors::print_warning("GS Sleep ignored\n");
+                    break;
                 case set_xyz_t:
                     e.get_gs().send_message(data);
                     if (frame_advance && data.payload.xyz_payload.drawing_kick && --draws_sent <= 0)

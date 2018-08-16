@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "-pthread -O2")
-
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 
@@ -124,4 +123,8 @@ set(HEADERS
         )
 
 add_executable(DobieStation ${SOURCES} ${HEADERS})
+if(MSVC)
+    set_property(TARGET DobieStation APPEND PROPERTY LINK_FLAGS /PROFILE)
+endif()
+
 target_link_libraries(DobieStation Qt5::Core Qt5::Widgets)

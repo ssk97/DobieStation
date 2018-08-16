@@ -78,6 +78,7 @@ GraphicsSynthesizerThread::GraphicsSynthesizerThread()
 
     for (int i = 0; i < 7; i++)//7 slaves currently hardcoded
     {
+        Errors::print_warning("Making slave %d\n", i);
         slave_pool.push_back(new GraphicsSynthesizerSlave(this));
     }
 
@@ -124,6 +125,12 @@ GraphicsSynthesizerThread::~GraphicsSynthesizerThread()
 {
     if (local_mem)
         delete[] local_mem;
+    for (auto& elem : slave_pool) {
+        elem->kill();
+        free(elem);
+    }
+    slave_pool.clear();
+
 }
 
 void GraphicsSynthesizerThread::event_loop(gs_fifo* fifo, gs_return_fifo* return_fifo)
@@ -141,7 +148,7 @@ void GraphicsSynthesizerThread::event_loop(gs_fifo* fifo, gs_return_fifo* return
             bool available = fifo->pop(data);
             if (available)
             {
-                sleep = true;
+                sleep = false;
                 if (gsdump_recording)
                     gsdump_file.write((char*)&data, sizeof(data));
                 switch (data.type)
@@ -286,21 +293,19 @@ void GraphicsSynthesizerThread::event_loop(gs_fifo* fifo, gs_return_fifo* return
                     }
                     case gssleep_t:
                         sleep = true;
+                        for (auto& elem : gs.slave_pool) {
+                            gs_slave_payload p;
+                            p.no_payload = {};
+                            elem->send({ slave_sleep, p });
+                        }
                         break;
                     default:
                         Errors::die("corrupted command sent to GS thread");
                 }
             }
             else if (sleep)
-            {
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                for (auto& elem : gs.slave_pool) {
-                    gs_slave_payload p;
-                    p.no_payload = {};
-                    elem->send({ slave_sleep, p });
-                }
-
-            } else 
+            else 
                 std::this_thread::yield();
         }
     }

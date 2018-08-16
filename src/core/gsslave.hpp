@@ -68,10 +68,12 @@ class GraphicsSynthesizerSlave
         GraphicsSynthesizerThread *gs;
         void sprite(int32_t y, int32_t i);
     public:
+        GraphicsSynthesizerSlave(GraphicsSynthesizerThread *gs);
         static void event_loop( GraphicsSynthesizerSlave *s);
+
         bool check_complete(); //also does an error check
         void send(gs_slave_command msg);
-        GraphicsSynthesizerSlave(GraphicsSynthesizerThread *gs);
+        void kill();
 };
 
 #endif // GSSLAVE_HPP
