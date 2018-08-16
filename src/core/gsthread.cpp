@@ -76,7 +76,7 @@ GraphicsSynthesizerThread::GraphicsSynthesizerThread()
     frame_complete = false;
     local_mem = nullptr;
 
-    for (int i = 0; i < 3; i++)//3 slaves currently hardcoded
+    for (int i = 0; i < 7; i++)//7 slaves currently hardcoded
     {
         slave_pool.push_back(new GraphicsSynthesizerSlave(this));
     }
@@ -131,6 +131,7 @@ void GraphicsSynthesizerThread::event_loop(gs_fifo* fifo, gs_return_fifo* return
     GraphicsSynthesizerThread gs = GraphicsSynthesizerThread();
     gs.reset();
     bool gsdump_recording = false;
+    bool sleep = false;
     ofstream gsdump_file;
     try
     {
@@ -140,6 +141,7 @@ void GraphicsSynthesizerThread::event_loop(gs_fifo* fifo, gs_return_fifo* return
             bool available = fifo->pop(data);
             if (available)
             {
+                sleep = true;
                 if (gsdump_recording)
                     gsdump_file.write((char*)&data, sizeof(data));
                 switch (data.type)
@@ -282,14 +284,24 @@ void GraphicsSynthesizerThread::event_loop(gs_fifo* fifo, gs_return_fifo* return
                         }
                         break;
                     }
+                    case gssleep_t:
+                        sleep = true;
+                        break;
                     default:
                         Errors::die("corrupted command sent to GS thread");
                 }
             }
-            else
+            else if (sleep)
             {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                for (auto& elem : gs.slave_pool) {
+                    gs_slave_payload p;
+                    p.no_payload = {};
+                    elem->send({ slave_sleep, p });
+                }
+
+            } else 
                 std::this_thread::yield();
-            }
         }
     }
     catch (Emulation_error &e)
@@ -1502,7 +1514,7 @@ int32_t GraphicsSynthesizerThread::orient2D(const Vertex &v1, const Vertex &v2, 
 void GraphicsSynthesizerThread::render_triangle()
 {
     printf("[GS_t] Rendering triangle!\n");
-
+    return;
     Vertex v1 = vtx_queue[2]; v1.to_relative(current_ctx->xyoffset);
     Vertex v2 = vtx_queue[1]; v2.to_relative(current_ctx->xyoffset);
     Vertex v3 = vtx_queue[0]; v3.to_relative(current_ctx->xyoffset);
@@ -1761,6 +1773,7 @@ void GraphicsSynthesizerThread::render_sprite()
     while (true)
     {
         bool done = true;
+        std::this_thread::yield();
         for (auto& elem : slave_pool) {
             if (!elem->check_complete())
                 done = false;

@@ -47,7 +47,7 @@ union gs_slave_shared_data
 
 enum gs_slave_type: uint8_t
 {
-    slave_die, slave_sprite, slave_tri
+    slave_die, slave_sprite, slave_tri, slave_sleep
 };
 
 struct gs_slave_command

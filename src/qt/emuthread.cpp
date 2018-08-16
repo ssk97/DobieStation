@@ -130,7 +130,15 @@ void EmuThread::gsdump_run()
 
                     emit completed_frame(e.get_gs().get_framebuffer(), w, h, new_w, new_h);
                     printf("gsdump frame render complete\n");
-                    pause(PAUSE_EVENT::FRAME_ADVANCE);
+                    //pause(PAUSE_EVENT::FRAME_ADVANCE);
+                    double FPS;
+                    
+                        chrono::system_clock::time_point now = chrono::system_clock::now();
+                        chrono::duration<double> elapsed_seconds = now - old_frametime;
+                        FPS = 1 / elapsed_seconds.count();
+                    
+                    old_frametime = chrono::system_clock::now();
+                    emit update_FPS((int)round(FPS));
                     return;
                 }
                 case gsdump_t:
@@ -165,7 +173,10 @@ void EmuThread::run()
         if (abort)
             return;
         else if (pause_status)
+        {
+            e.get_gs().sleep();
             usleep(10000);
+        }
         else if (gsdump_reading)
             gsdump_run();
         else

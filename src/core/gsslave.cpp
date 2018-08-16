@@ -31,21 +31,33 @@ void GraphicsSynthesizerSlave::event_loop(GraphicsSynthesizerSlave *s)
 {
     try
     {
+        bool sleep = false;
         while (true)
         {
             gs_slave_command data;
             bool available = s->fifo.pop(data);
-            switch (data.type)
+            if (available)
             {
-                case slave_tri:
-                    break;
-                case slave_sprite:
-                    s->sprite(data.payload.sprite_payload.scanline, data.payload.sprite_payload.i);
-                    break;
-                case slave_die:
-                    return;
+                sleep = false;
+                switch (data.type)
+                {
+                    case slave_tri:
+                        break;
+                    case slave_sprite:
+                        s->sprite(data.payload.sprite_payload.scanline, data.payload.sprite_payload.i);
+                        break;
+                    case slave_sleep:
+                        sleep = true;
+                        break;
+                    case slave_die:
+                        return;
+                }
+                s->remaining.fetch_sub(1, std::memory_order_release);
             }
-            s->remaining.fetch_sub(1, std::memory_order_release);
+            else if (sleep)
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            else
+                std::this_thread::yield();
         }
     }
     catch (Emulation_error &e)

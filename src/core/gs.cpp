@@ -346,3 +346,9 @@ void GraphicsSynthesizer::send_dump_request()
     p.no_payload = { 0 };
     send_message({ gsdump_t, p });
 }
+void GraphicsSynthesizer::sleep()
+{
+    GS_message_payload p;
+    p.no_payload = { 0 };
+    send_message({ gssleep_t, p });
+}

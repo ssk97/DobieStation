@@ -15,7 +15,7 @@ enum GS_command:uint8_t
 	write64_t, write64_privileged_t, write32_privileged_t,
     set_rgba_t, set_stq_t, set_uv_t, set_xyz_t, set_q_t, set_crt_t,
     render_crt_t, assert_finish_t, assert_vsync_t, set_vblank_t, memdump_t, die_t,
-    savestate_t, loadstate_t, gsdump_t
+    savestate_t, loadstate_t, gsdump_t, gssleep_t
 };
 
 union GS_message_payload 
@@ -173,7 +173,7 @@ class GraphicsSynthesizer
         void load_state(std::ifstream& state);
         void save_state(std::ofstream& state);
         void send_dump_request();
-        
+        void sleep();
 };
 
 #endif // GS_HPP
