@@ -76,6 +76,11 @@ GraphicsSynthesizerThread::GraphicsSynthesizerThread()
     frame_complete = false;
     local_mem = nullptr;
 
+    for (int i = 0; i < 3; i++)//3 slaves currently hardcoded
+    {
+        slave_pool.push_back(new GraphicsSynthesizerSlave(this));
+    }
+
     //Initialize swizzling tables
     for (int block = 0; block < 32; block++)
     {

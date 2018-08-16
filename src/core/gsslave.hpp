@@ -9,7 +9,7 @@ union gs_slave_payload
 {
     struct
     {
-        int scanline;
+        int32_t scanline;
     } sprite_payload;
     struct
     {
@@ -26,6 +26,15 @@ union gs_slave_shared_data
     struct
     {
 
+        float pix_t;
+        int32_t pix_v;
+        float pix_s_init;
+        int32_t pix_u_init;
+
+        float pix_t_step;
+        int32_t pix_v_step;
+        float pix_s_step;
+        int32_t pix_u_step;
     } sprite_data;
     struct
     {
@@ -51,8 +60,8 @@ class GraphicsSynthesizerSlave
     private:
         std::thread slave_thread;
         std::atomic_int16_t remaining;
-        gs_slave_fifo *fifo;
         std::atomic<char*> error_report;
+        gs_slave_fifo fifo;
     public:
         static void event_loop(GraphicsSynthesizerThread *gs, GraphicsSynthesizerSlave *s);
         bool check_complete(); //also does an error check

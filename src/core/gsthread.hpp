@@ -4,6 +4,7 @@
 #include "gscontext.hpp"
 #include "gs.hpp"
 #include "gsslave.hpp"
+#include <vector>
 struct PRMODE
 {
     bool gourand_shading;
@@ -87,6 +88,8 @@ struct Vertex
 class GraphicsSynthesizerThread
 {
     private:
+        std::vector<GraphicsSynthesizerSlave*> slave_pool;
+        gs_slave_shared_data slave_shared_data;
         bool frame_complete;
         int frame_count;
         uint8_t* local_mem;
