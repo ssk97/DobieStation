@@ -1663,65 +1663,55 @@ void GraphicsSynthesizerThread::render_triangle()
 void GraphicsSynthesizerThread::render_sprite()
 {
     printf("[GS_t] Rendering sprite!\n");
+    auto shared = &(slave_shared_data.sprite_data);
     Vertex v1 = vtx_queue[1]; v1.to_relative(current_ctx->xyoffset);
     Vertex v2 = vtx_queue[0]; v2.to_relative(current_ctx->xyoffset);
 
-    RGBAQ_REG vtx_color, tex_color;
-    vtx_color = vtx_queue[0].rgbaq;
 
     if (v1.x > v2.x)
     {
         swap(v1, v2);
     }
 
+    shared->v1 = v1;
+    shared->v2 = v2;
+
     //Automatic scissoring test
     int32_t min_y = std::max(v1.y, (int32_t)current_ctx->scissor.y1);
-    int32_t min_x = std::max(v1.x, (int32_t)current_ctx->scissor.x1);
     int32_t max_y = std::min(v2.y, (int32_t)current_ctx->scissor.y2);
-    int32_t max_x = std::min(v2.x, (int32_t)current_ctx->scissor.x2);
+    shared->min_x = std::max(v1.x, (int32_t)current_ctx->scissor.x1);
+    shared->max_x = std::min(v2.x, (int32_t)current_ctx->scissor.x2);
 
     printf("Coords: (%d, %d) (%d, %d)\n", v1.x >> 4, v1.y >> 4, v2.x >> 4, v2.y >> 4);
 
-    float pix_t = interpolate_f(min_y, v1.t, v1.y, v2.t, v2.y);
-    int32_t pix_v = (int32_t)interpolate(min_y, v1.uv.v, v1.y, v2.uv.v, v2.y) << 16;
-    float pix_s_init = interpolate_f(min_x, v1.s, v1.x, v2.s, v2.x);
-    int32_t pix_u_init = (int32_t)interpolate(min_x, v1.uv.u, v1.x, v2.uv.u, v2.x) << 16;
+    shared->pix_t_init = interpolate_f(min_y, v1.t, v1.y, v2.t, v2.y);
+    shared->pix_v_init = (int32_t)interpolate(min_y, v1.uv.v, v1.y, v2.uv.v, v2.y) << 16;
+    shared->pix_s_init = interpolate_f(slave_shared_data.sprite_data.min_x, v1.s, v1.x, v2.s, v2.x);
+    shared->pix_u_init = (int32_t)interpolate(slave_shared_data.sprite_data.min_x, v1.uv.u, v1.x, v2.uv.u, v2.x) << 16;
+    
+    shared->pix_t_step = stepsize(v1.t, v1.y, v2.t, v2.y, 0x10);
+    shared->pix_v_step = stepsize((int32_t)v1.uv.v, v1.y, (int32_t)v2.uv.v, v2.y, 0x100000);
+    shared->pix_s_step = stepsize(v1.s, v1.x, v2.s, v2.x, 0x10);
+    shared->pix_u_step = stepsize((int32_t)v1.uv.u, v1.x, (int32_t)v2.uv.u, v2.x, 0x100000);
 
-    float pix_t_step = stepsize(v1.t, v1.y, v2.t, v2.y, 0x10);
-    int32_t pix_v_step = stepsize((int32_t)v1.uv.v, v1.y, (int32_t)v2.uv.v, v2.y, 0x100000);
-    float pix_s_step = stepsize(v1.s, v1.x, v2.s, v2.x, 0x10);
-    int32_t pix_u_step = stepsize((int32_t)v1.uv.u, v1.x, (int32_t)v2.uv.u, v2.x, 0x100000);
-
-    bool tmp_tex = PRIM.texture_mapping;
-    bool tmp_uv = !PRIM.use_UV;//allow for loop unswitching
-
-    for (int32_t y = min_y; y < max_y; y += 0x10)
+    int max_slaves = slave_pool.size();
+    for (int32_t y = min_y, i=0; y < max_y; y += 0x10, i++)
     {
-        float pix_s = pix_s_init;
-        uint32_t pix_u = pix_u_init;
-        for (int32_t x = min_x; x < max_x; x += 0x10)
-        {
-            if (tmp_tex)
-            {
-                if (tmp_uv)
-                {
-                    pix_v = (pix_t * current_ctx->tex0.tex_height)*16;
-                    pix_u = (pix_s * current_ctx->tex0.tex_width)*16;
-                    tex_lookup(pix_u, pix_v, vtx_color, tex_color);
-                }
-                else
-                    tex_lookup(pix_u >> 16 , pix_v >> 16, vtx_color, tex_color);
-                draw_pixel(x, y, v2.z, tex_color, PRIM.alpha_blend);
-            }
-            else
-            {
-                draw_pixel(x, y, v2.z, vtx_color, PRIM.alpha_blend);
-            }
-            pix_s += pix_s_step;
-            pix_u += pix_u_step;
+        auto this_slave = slave_pool[i%max_slaves];
+        gs_slave_payload p;
+        p.sprite_payload = { y, i };
+        this_slave->send({slave_sprite, p});
+    }
+
+    while (true)
+    {
+        bool done = true;
+        for (auto& elem : slave_pool) {
+            if (!elem->check_complete())
+                done = false;
         }
-        pix_t += pix_t_step;
-        pix_v += pix_v_step;
+        if (done)
+            break;
     }
 }
 
