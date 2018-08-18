@@ -76,7 +76,7 @@ GraphicsSynthesizerThread::GraphicsSynthesizerThread()
     frame_complete = false;
     local_mem = nullptr;
 
-    for (int i = 0; i < 6; i++)//slave count currently hardcoded
+    for (int i = 0; i < 16; i++)//slave count currently hardcoded
     {
         slave_pool.push_back(new GraphicsSynthesizerSlave(this));
     }
@@ -1518,7 +1518,8 @@ int32_t GraphicsSynthesizerThread::orient2D(const Vertex &v1, const Vertex &v2, 
 void GraphicsSynthesizerThread::render_triangle()
 {
     printf("[GS_t] Rendering triangle!\n");
-    return;
+    auto shared = &(slave_shared_data.tri_data);
+
     Vertex v1 = vtx_queue[2]; v1.to_relative(current_ctx->xyoffset);
     Vertex v2 = vtx_queue[1]; v2.to_relative(current_ctx->xyoffset);
     Vertex v3 = vtx_queue[0]; v3.to_relative(current_ctx->xyoffset);
@@ -1530,6 +1531,7 @@ void GraphicsSynthesizerThread::render_triangle()
     //Order by counter-clockwise winding order
     if (orient2D(v1, v2, v3) < 0)
         swap(v2, v3);
+
 
     int32_t divider = orient2D(v1, v2, v3);
     //Calculate bounding box of triangle
@@ -1585,12 +1587,22 @@ void GraphicsSynthesizerThread::render_triangle()
         v2.rgbaq.a = v3.rgbaq.a;
     }
 
-    RGBAQ_REG vtx_color, tex_color;
 
-    bool tmp_tex = PRIM.texture_mapping;
-    bool tmp_uv = !PRIM.use_UV;//allow for loop unswitching
+    shared->v1 = v1;
+    shared->v2 = v2;
+    shared->v3 = v3;
+    shared->A12 = A12;
+    shared->B12 = B12;
+    shared->A23 = A23;
+    shared->B23 = B23;
+    shared->A31 = A31;
+    shared->B31 = B31;
+    shared->divider = divider;
 
-    //TODO: Parallelize this
+
+    int max_slaves = slave_pool.size();
+    int i = 0;
+
     //Iterate through the bounding rectangle using BLOCKSIZE * BLOCKSIZE large blocks
     //This way we can throw out blocks which are totally outside the triangle way faster
     //Thanks you, Dolphin code for the idea
@@ -1647,76 +1659,12 @@ void GraphicsSynthesizerThread::render_triangle()
                 int32_t w1_row = w1_block;
                 int32_t w2_row = w2_block;
                 int32_t w3_row = w3_block;
-                for (int32_t y = y_block; y < y_block + BLOCKSIZE; y += 0x10)
-                {
-                    int32_t w1 = w1_row;
-                    int32_t w2 = w2_row;
-                    int32_t w3 = w3_row;
-                    for (int32_t x = x_block; x < x_block + BLOCKSIZE; x += 0x10)
-                    {
-                        //Is inside triangle?
-                        if ((w1 | w2 | w3) >= 0)
-                        {
-                            //Interpolate Z
-                            double z = (double) v1.z * w1 + (double) v2.z * w2 + (double) v3.z * w3;
-                            z /= divider;
 
-                            //Gourand shading calculations
-                            float r = (float) v1.rgbaq.r * w1 + (float) v2.rgbaq.r * w2 + (float) v3.rgbaq.r * w3;
-                            float g = (float) v1.rgbaq.g * w1 + (float) v2.rgbaq.g * w2 + (float) v3.rgbaq.g * w3;
-                            float b = (float) v1.rgbaq.b * w1 + (float) v2.rgbaq.b * w2 + (float) v3.rgbaq.b * w3;
-                            float a = (float) v1.rgbaq.a * w1 + (float) v2.rgbaq.a * w2 + (float) v3.rgbaq.a * w3;
-                            float q = v1.rgbaq.q * w1 + v2.rgbaq.q * w2 + v3.rgbaq.q * w3;
-                            vtx_color.r = r / divider;
-                            vtx_color.g = g / divider;
-                            vtx_color.b = b / divider;
-                            vtx_color.a = a / divider;
-                            vtx_color.q = q / divider;
-
-                            if (tmp_tex)
-                            {
-                                uint32_t u, v;
-                                if (tmp_uv)
-                                {
-                                    float s, t, q;
-                                    s = v1.s * w1 + v2.s * w2 + v3.s * w3;
-                                    t = v1.t * w1 + v2.t * w2 + v3.t * w3;
-                                    q = v1.rgbaq.q * w1 + v2.rgbaq.q * w2 + v3.rgbaq.q * w3;
-
-                                    //We don't divide s and t by "divider" because dividing by Q effectively
-                                    //cancels that out
-                                    s /= q;
-                                    t /= q;
-                                    u = (s * current_ctx->tex0.tex_width) * 16.0;
-                                    v = (t * current_ctx->tex0.tex_height) * 16.0;
-                                }
-                                else
-                                {
-                                    float temp_u = (float) v1.uv.u * w1 + (float) v2.uv.u * w2 + (float) v3.uv.u * w3;
-                                    float temp_v = (float) v1.uv.v * w1 + (float) v2.uv.v * w2 + (float) v3.uv.v * w3;
-                                    temp_u /= divider;
-                                    temp_v /= divider;
-                                    u = (uint32_t) temp_u;
-                                    v = (uint32_t) temp_v;
-                                }
-                                tex_lookup(u, v, vtx_color, tex_color);
-                                draw_pixel(x, y, (uint32_t) z, tex_color, PRIM.alpha_blend);
-                            }
-                            else
-                            {
-                                draw_pixel(x, y, (uint32_t) z, vtx_color, PRIM.alpha_blend);
-                            }
-                        }
-                        //Horizontal step
-                        w1 += A23 << 4;
-                        w2 += A31 << 4;
-                        w3 += A12 << 4;
-                    }
-                    //Vertical step
-                    w1_row += B23 << 4;
-                    w2_row += B31 << 4;
-                    w3_row += B12 << 4;
-                }
+                auto this_slave = slave_pool[i%max_slaves];
+                gs_slave_payload p;
+                p.tri_payload = { x_block, y_block, w1_row, w2_row, w3_row };
+                this_slave->send({ slave_tri, p });
+                i++;
             }
 
             w1_block += BLOCKSIZE * A23;
@@ -1729,6 +1677,17 @@ void GraphicsSynthesizerThread::render_triangle()
         w3_row_block += BLOCKSIZE * B12;
     }
 
+    while (true)
+    {
+        bool done = true;
+        std::this_thread::yield();
+        for (auto& elem : slave_pool) {
+            if (!elem->check_complete())
+                done = false;
+        }
+        if (done)
+            break;
+    }
 }
 
 void GraphicsSynthesizerThread::render_sprite()

@@ -14,7 +14,8 @@ union gs_slave_payload
     } sprite_payload;
     struct
     {
-        int32_t block_x, block_y;
+        int32_t x_block, y_block;
+        int32_t w1_row, w2_row, w3_row;
     } tri_payload;
     struct
     {
@@ -41,7 +42,9 @@ union gs_slave_shared_data
     } sprite_data;
     struct
     {
-
+        Vertex v1, v2, v3;
+        int32_t A12, B12, A23, B23, A31, B31;
+        int32_t divider;
     } tri_data;
 };
 
@@ -56,7 +59,7 @@ struct gs_slave_command
     gs_slave_payload payload;
 };
 
-typedef CircularFifo<gs_slave_command, 1024*2> gs_slave_fifo;
+typedef CircularFifo<gs_slave_command, 1024*32> gs_slave_fifo;
 
 class GraphicsSynthesizerSlave
 {
@@ -66,7 +69,8 @@ class GraphicsSynthesizerSlave
         std::atomic<char*> error_report;
         gs_slave_fifo fifo;
         GraphicsSynthesizerThread *gs;
-        void sprite(int32_t y, int32_t i);
+        void sprite(gs_slave_payload spr_data);
+        void triangle(gs_slave_payload tri_data);
     public:
         GraphicsSynthesizerSlave(GraphicsSynthesizerThread *gs);
         static void event_loop( GraphicsSynthesizerSlave *s);
