@@ -40,6 +40,7 @@ void GraphicsSynthesizerSlave::event_loop(GraphicsSynthesizerSlave *s)
     try
     {
         bool sleep = false;
+        uint32_t local_count = 0;
         while (true)
         {
             gs_slave_command data;
@@ -60,12 +61,21 @@ void GraphicsSynthesizerSlave::event_loop(GraphicsSynthesizerSlave *s)
                     case slave_die:
                         return;
                 }
-                s->remaining.fetch_sub(1, std::memory_order_release);
+                local_count++;
             }
-            else if (sleep)
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             else
-                std::this_thread::yield();
+            {
+                if (local_count > 0)
+                {
+                    s->remaining.fetch_sub(local_count, std::memory_order_release);
+                    local_count = 0;
+                }
+
+                if (sleep)
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                else
+                    std::this_thread::yield();
+            }
         }
     }
     catch (Emulation_error &e)

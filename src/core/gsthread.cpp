@@ -76,9 +76,8 @@ GraphicsSynthesizerThread::GraphicsSynthesizerThread()
     frame_complete = false;
     local_mem = nullptr;
 
-    for (int i = 0; i < 7; i++)//7 slaves currently hardcoded
+    for (int i = 0; i < 6; i++)//slave count currently hardcoded
     {
-        Errors::print_warning("Making slave %d\n", i);
         slave_pool.push_back(new GraphicsSynthesizerSlave(this));
     }
 
