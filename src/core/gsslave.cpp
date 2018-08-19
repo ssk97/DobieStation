@@ -132,7 +132,7 @@ void GraphicsSynthesizerSlave::sprite(gs_slave_payload spr_data)
 
 void GraphicsSynthesizerSlave::triangle(gs_slave_payload tri_data)
 {
-    const int32_t BLOCKSIZE = 1 << 4; // WARNING: must be identical to gsthread's render_triangle BLOCKSIZE
+    const int32_t BLOCKSIZE = 1 << 8; // WARNING: must be identical to gsthread's render_triangle BLOCKSIZE
 
     auto shared = &(gs->slave_shared_data.tri_data);
 

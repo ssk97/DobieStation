@@ -69,6 +69,7 @@ class GraphicsSynthesizerSlave
         std::atomic<char*> error_report;
         gs_slave_fifo fifo;
         GraphicsSynthesizerThread *gs;
+
         void sprite(gs_slave_payload spr_data);
         void triangle(gs_slave_payload tri_data);
     public:
@@ -78,6 +79,8 @@ class GraphicsSynthesizerSlave
         bool check_complete(); //also does an error check
         void send(gs_slave_command msg);
         void kill();
+
+        friend GraphicsSynthesizerThread;
 };
 
 #endif // GSSLAVE_HPP

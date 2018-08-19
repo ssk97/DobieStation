@@ -76,7 +76,7 @@ GraphicsSynthesizerThread::GraphicsSynthesizerThread()
     frame_complete = false;
     local_mem = nullptr;
 
-    for (int i = 0; i < 16; i++)//slave count currently hardcoded
+    for (int i = 0; i < 8; i++)//slave count currently hardcoded
     {
         slave_pool.push_back(new GraphicsSynthesizerSlave(this));
     }
@@ -1547,7 +1547,7 @@ void GraphicsSynthesizerThread::render_triangle()
     max_y = min(max_y, (int32_t)current_ctx->scissor.y2);
 
     //We'll process the pixels in blocks, set the blocksize
-    const int32_t BLOCKSIZE = 1 << 4; // Must be power of 2
+    const int32_t BLOCKSIZE = 1 << 8; // Must be power of 2
 
     //Round down to make starting corner's coordinates a multiple of BLOCKSIZE with bitwise magic
     min_x &= ~(BLOCKSIZE - 1);
@@ -1602,6 +1602,8 @@ void GraphicsSynthesizerThread::render_triangle()
 
     int max_slaves = slave_pool.size();
     int i = 0;
+
+    uint32_t count = ((max_y - min_y) / BLOCKSIZE +1) * ((max_x - min_x) / BLOCKSIZE +1);
 
     //Iterate through the bounding rectangle using BLOCKSIZE * BLOCKSIZE large blocks
     //This way we can throw out blocks which are totally outside the triangle way faster
@@ -1660,10 +1662,19 @@ void GraphicsSynthesizerThread::render_triangle()
                 int32_t w2_row = w2_block;
                 int32_t w3_row = w3_block;
 
-                auto this_slave = slave_pool[i%max_slaves];
                 gs_slave_payload p;
                 p.tri_payload = { x_block, y_block, w1_row, w2_row, w3_row };
-                this_slave->send({ slave_tri, p });
+                if (count > 4)
+                {
+                    auto this_slave = slave_pool[i%max_slaves];
+                    this_slave->send({ slave_tri, p });
+                }
+                else
+                {
+                    auto this_slave = slave_pool[0];
+                    this_slave->triangle(p);
+                }
+                    
                 i++;
             }
 
